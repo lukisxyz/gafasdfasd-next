@@ -1,98 +1,55 @@
 import useSWR from 'swr'
-import axios from '@/lib/axios'
+import axios from '@/libs/axios'
 import { useEffect } from 'react'
 import { useRouter } from 'next/router'
+import { z } from 'zod'
 
-export const useAuth = ({ middleware, redirectIfAuthenticated } = {}) => {
+export const loginSchema = z.object({
+    email: z.string().min(1, { message: 'Email is required' }).email({
+        message: 'Must be a valid email',
+    }),
+    password: z
+        .string()
+        .min(6, { message: 'Password must be atleast 6 characters' }),
+})
+
+export const useAuth = ({
+    middleware,
+    redirectIfAuthenticated,
+    notif,
+} = {}) => {
     const router = useRouter()
 
-    const { data: user, error, mutate } = useSWR('/api/user', () =>
+    const { data: user, error, mutate } = useSWR('/api/me', () =>
         axios
-            .get('/api/user')
+            .get('/api/me')
             .then(res => res.data)
             .catch(error => {
-                if (error.response.status !== 409) throw error
-
-                router.push('/verify-email')
+                if (error?.response.data) {
+                    notif(error?.response.data.message)
+                }
+                router.push('/')
             }),
     )
 
     const csrf = () => axios.get('/sanctum/csrf-cookie')
 
-    const register = async ({ setErrors, ...props }) => {
+    const login = async ({ ...props }) => {
         await csrf()
 
-        setErrors([])
-
         axios
-            .post('/register', props)
+            .post('/api/login', props)
             .then(() => mutate())
             .catch(error => {
-                if (error.response.status !== 422) throw error
-
-                setErrors(error.response.data.errors)
+                if (error?.response.data) {
+                    notif(error?.response.data.message)
+                }
             })
-    }
-
-    const login = async ({ setErrors, setStatus, ...props }) => {
-        await csrf()
-
-        setErrors([])
-        setStatus(null)
-
-        axios
-            .post('/login', props)
-            .then(() => mutate())
-            .catch(error => {
-                if (error.response.status !== 422) throw error
-
-                setErrors(error.response.data.errors)
-            })
-    }
-
-    const forgotPassword = async ({ setErrors, setStatus, email }) => {
-        await csrf()
-
-        setErrors([])
-        setStatus(null)
-
-        axios
-            .post('/forgot-password', { email })
-            .then(response => setStatus(response.data.status))
-            .catch(error => {
-                if (error.response.status !== 422) throw error
-
-                setErrors(error.response.data.errors)
-            })
-    }
-
-    const resetPassword = async ({ setErrors, setStatus, ...props }) => {
-        await csrf()
-
-        setErrors([])
-        setStatus(null)
-
-        axios
-            .post('/reset-password', { token: router.query.token, ...props })
-            .then(response =>
-                router.push('/login?reset=' + btoa(response.data.status)),
-            )
-            .catch(error => {
-                if (error.response.status !== 422) throw error
-
-                setErrors(error.response.data.errors)
-            })
-    }
-
-    const resendEmailVerification = ({ setStatus }) => {
-        axios
-            .post('/email/verification-notification')
-            .then(response => setStatus(response.data.status))
     }
 
     const logout = async () => {
         if (!error) {
-            await axios.post('/logout').then(() => mutate())
+            await axios.post('/api/logout').then(() => mutate())
         }
 
         window.location.pathname = '/login'
@@ -111,11 +68,7 @@ export const useAuth = ({ middleware, redirectIfAuthenticated } = {}) => {
 
     return {
         user,
-        register,
         login,
-        forgotPassword,
-        resetPassword,
-        resendEmailVerification,
         logout,
     }
 }

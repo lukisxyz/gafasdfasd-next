@@ -1,133 +1,127 @@
-import ApplicationLogo from '@/components/ApplicationLogo'
-import AuthCard from '@/components/AuthCard'
-import AuthSessionStatus from '@/components/AuthSessionStatus'
-import Button from '@/components/Button'
-import GuestLayout from '@/components/Layouts/GuestLayout'
-import Input from '@/components/Input'
-import InputError from '@/components/InputError'
-import Label from '@/components/Label'
+import { Button } from '@/components/base/button'
+import { Input } from '@/components/base/input'
+import { Label } from '@/components/base/label'
+import { loginSchema, useAuth } from '@/hooks/auth'
+import Image from 'next/image'
 import Link from 'next/link'
-import { useAuth } from '@/hooks/auth'
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/router'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 
-const Login = () => {
-    const router = useRouter()
+import { toast } from 'react-hot-toast'
 
+export default function LoginPage() {
+    const notif = msg => {
+        toast.error(msg)
+    }
     const { login } = useAuth({
         middleware: 'guest',
-        redirectIfAuthenticated: '/dashboard',
+        redirectIfAuthenticated: '/',
+        notif,
     })
 
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
-    const [shouldRemember, setShouldRemember] = useState(false)
-    const [errors, setErrors] = useState([])
-    const [status, setStatus] = useState(null)
-
-    useEffect(() => {
-        if (router.query.reset?.length > 0 && errors.length === 0) {
-            setStatus(atob(router.query.reset))
-        } else {
-            setStatus(null)
-        }
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+    } = useForm({
+        resolver: zodResolver(loginSchema),
     })
 
-    const submitForm = async event => {
-        event.preventDefault()
-
+    const submitForm = data => {
+        const { email, password } = data
         login({
             email,
             password,
-            remember: shouldRemember,
-            setErrors,
-            setStatus,
         })
     }
 
     return (
-        <GuestLayout>
-            <AuthCard
-                logo={
-                    <Link href="/">
-                        <ApplicationLogo className="w-20 h-20 fill-current text-gray-500" />
-                    </Link>
-                }>
-                {/* Session Status */}
-                <AuthSessionStatus className="mb-4" status={status} />
-
-                <form onSubmit={submitForm}>
-                    {/* Email Address */}
-                    <div>
-                        <Label htmlFor="email">Email</Label>
-
+        <main>
+            <div className="absolute left-0 top-0 w-screen h-screen">
+                <Image
+                    alt="background"
+                    fill={true}
+                    src="/images/pexels-pixabay-159711 1.jpg"
+                    className="-z-10"
+                />
+            </div>
+            <div className="absolute top-1/2 -translate-y-1/2 w-screen">
+                <div className="max-w-[416px] w-full mx-auto py-16 px-14 backdrop-blur-sm bg-white/50 my-auto rounded-2xl">
+                    <div className="w-full flex justify-center mb-10">
+                        <Image
+                            alt="logo"
+                            height={60}
+                            width={238}
+                            src="/images/logo.svg"
+                        />
+                    </div>
+                    <h1 className="text-center font-semibold text-black text-2xl">
+                        LOGIN
+                    </h1>
+                    <br />
+                    <form onSubmit={handleSubmit(submitForm)}>
+                        <Label
+                            className="text-black font-semibold text-base"
+                            htmlFor="email">
+                            Email
+                        </Label>
                         <Input
-                            id="email"
-                            type="email"
-                            value={email}
-                            className="block mt-1 w-full"
-                            onChange={event => setEmail(event.target.value)}
-                            required
                             autoFocus
-                        />
-
-                        <InputError messages={errors.email} className="mt-2" />
-                    </div>
-
-                    {/* Password */}
-                    <div className="mt-4">
-                        <Label htmlFor="password">Password</Label>
-
-                        <Input
-                            id="password"
-                            type="password"
-                            value={password}
-                            className="block mt-1 w-full"
-                            onChange={event => setPassword(event.target.value)}
+                            {...register('email')}
                             required
-                            autoComplete="current-password"
+                            type="email"
+                            name="email"
                         />
-
-                        <InputError
-                            messages={errors.password}
-                            className="mt-2"
+                        {errors.email && (
+                            <p className="text-xs italic text-red-900 mt-2">
+                                {errors.email?.message}
+                            </p>
+                        )}
+                        <br />
+                        <Label
+                            className="text-black font-semibold text-base"
+                            htmlFor="password">
+                            Password
+                        </Label>
+                        <Input
+                            autoFocus
+                            {...register('password')}
+                            required
+                            type="password"
+                            name="password"
                         />
-                    </div>
-
-                    {/* Remember Me */}
-                    <div className="block mt-4">
-                        <label
-                            htmlFor="remember_me"
-                            className="inline-flex items-center">
-                            <input
-                                id="remember_me"
-                                type="checkbox"
-                                name="remember"
-                                className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                                onChange={event =>
-                                    setShouldRemember(event.target.checked)
-                                }
-                            />
-
-                            <span className="ml-2 text-sm text-gray-600">
-                                Remember me
-                            </span>
-                        </label>
-                    </div>
-
-                    <div className="flex items-center justify-end mt-4">
-                        <Link
-                            href="/forgot-password"
-                            className="underline text-sm text-gray-600 hover:text-gray-900">
-                            Forgot your password?
-                        </Link>
-
-                        <Button className="ml-3">Login</Button>
-                    </div>
-                </form>
-            </AuthCard>
-        </GuestLayout>
+                        {errors.password && (
+                            <p className="text-xs italic text-red-900 mt-2">
+                                {errors.password?.message}
+                            </p>
+                        )}
+                        <br />
+                        <Button
+                            className="rounded-md text-center w-full"
+                            type="submit">
+                            <div className="flex gap-2 mx-auto">
+                                Login
+                                <Image
+                                    src="/icons/arrow-right.svg"
+                                    alt="arrow right"
+                                    width={18}
+                                    height={18}
+                                />
+                            </div>
+                        </Button>
+                        <br />
+                        <br />
+                        <p className="text-center text-base w-full text-slate-700">
+                            No have account?{'  '}
+                            <Link
+                                className="text-white font-bold"
+                                href="signup">
+                                sign up here
+                            </Link>
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </main>
     )
 }
-
-export default Login
